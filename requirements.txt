@@ -1,4 +1,4 @@
 python-multipart
 playwright
 fastapi
-pyppeteer
+pillow

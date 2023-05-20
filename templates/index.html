@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Doc</title>
+    <title>Printable PKCS-7</title>
     <style>
         html {
             background-color: rgb(30,30,40);
@@ -27,24 +27,31 @@
         <button id="uploadButton" style="margin-top:1%">Upload Selected Files</button>
     </div>
     <script>
-        function handleFileUpload(url) {
+        function handleFileUpload() {
             const formData = new FormData();
             const sigFileInput = document.getElementById("sigFileInput");
             const pdfFileInput = document.getElementById("pdfFileInput");
-            if (sigFileInput.files.length > 0) {
-                formData.append("sig_file", sigFileInput.files[0]);
+
+            if (sigFileInput.files.length > 0 && pdfFileInput.files.length > 0) {
+                const sigFileName = sigFileInput.files[0].name;
+                const pdfFileName = pdfFileInput.files[0].name;
+
+                const sigExtension = sigFileName.substring(sigFileName.lastIndexOf('.'));
+                const pdfExtension = pdfFileName.substring(pdfFileName.lastIndexOf('.'));
+
+                if ((sigExtension === '.sig') && pdfExtension === '.pdf') {
+                    formData.append('sig_file', sigFileInput.files[0]);
+                    formData.append('pdf_file', pdfFileInput.files[0]);
+                } else {
+                    alert('Please select a valid *.sig and *.pdf files');
+                    return;
+                }
             } else {
-                alert("Please select a valid .sig file");
-                return;
+            alert('Please select files');
+            return;
             }
-            
-            if (pdfFileInput.files.length > 0) {
-                formData.append("pdf_file", pdfFileInput.files[0]);
-            } else {
-                alert("Please select a valid .pdf file");
-                return;
-            }
-            fetch(url, {
+
+            fetch("/upload", {
                 method: "POST",
                 body: formData
             })
@@ -60,7 +67,7 @@
         }
         const uploadButton = document.getElementById("uploadButton");
         uploadButton.addEventListener("click", () => {
-            handleFileUpload("http://localhost:8000/upload");
+            handleFileUpload();
         });
     </script>    
 </body>
