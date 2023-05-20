@@ -1,4 +1,4 @@
-python-multipart
-playwright
 fastapi
+cryptography
 pillow
+python-multipart

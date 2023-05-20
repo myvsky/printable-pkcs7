@@ -1,12 +1,18 @@
-import time
+import uvicorn
 
-from playwright.async_api import async_playwright
-
+# Web app holding
 from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+# SIG parsing
+import subprocess
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.x509.oid import NameOID
+
+# Stamp creating
 from PIL import Image, ImageDraw, ImageFont
 
 # Configure CORS
@@ -33,69 +39,85 @@ async def index():
 
 @app.post("/upload")
 async def collect_upload(sig_file: UploadFile = File(...), pdf_file: UploadFile = File(...)):
-    # We'll get the input files as soon as the user submits them in HTML
-    pdf_contents = await pdf_file.read()
-    sig_contents = await sig_file.read()
+    pdf = await pdf_file.read()
+    sig = await sig_file.read()
 
-    # When it's posted, we get information for further stamp creation
-    stamp_info = await parse_sig(pdf_contents, sig_contents)
+    stamp_info = parse_sig(pdf, sig)
     create_stamp(stamp_info)
     return {"message": "Files uploaded and processed successfully"}
 
 
-async def parse_sig(pdf_file, sig_file):
-    async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch()
-        page = await browser.new_page()
+def parse_sig(pdf, sig) -> dict:
 
-        await page.goto('https://www.gosuslugi.ru/eds')
+    # Specify the path to the input PKCS#7 certificate file
+    input_file = 'Кузнецова договор.pdf (1).p7s'
 
-        # Wait for the input elements to appear in the DOM
-        await page.wait_for_selector('body')
-        input_element = await page.query_selector_all('input')
+    # Run the openssl command to convert the certificate and capture the output
+    output = subprocess.run(['openssl', 'pkcs7', '-in', input_file, '-inform', 'DER', '-print_certs'], capture_output=True)
 
-        # Fill in the input elements with the file contents
-        await input_element[1].set_input_files({'name': 'file.pdf', 'mimeType': 'application/pdf', 'buffer': pdf_file})
-        time.sleep(2)
-        await input_element[2].set_input_files({'name': 'file.sig', 'mimeType': 'application/octet-stream', 'buffer': sig_file})
+    # Extract the PEM certificate data from the output
+    pem_data = output.stdout
 
-        await page.wait_for_selector("//a[@ng-bind='btnText']")
-        button_el = await page.query_selector("//a[@ng-bind='btnText']")
-        await button_el.click()
+    # Parse the PEM certificate data
+    p7s = x509.load_pem_x509_certificate(pem_data, default_backend())
 
-        # Wait for conent we will extract to be loaded
-        await page.wait_for_selector('//div[@class="row ng-scope"]')
+    cn = p7s.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+    document_id = p7s.serial_number
+    expiration_time = p7s.not_valid_after
+    signature = p7s.signature
 
-        # Select all the elements that contain information about signature
-        info = await page.query_selector_all('//*[@class="span_11 plain-text ng-binding"]')
-
-        parsed_dict = {
-            "Статус подписи": await info[0].text_content(),
-            "Владелец сертификата": await info[2].text_content(),
-            "Издатель сертификата": await info[3].text_content(),
-            "Серийный номер": await info[4].text_content(),
-            "Действителен": await info[5].text_content()
-        }
-        await browser.close()
-
-        return parsed_dict
-
-def create_stamp(data: dict):
-    temp_img = Image.new('RGB', (300, 100), 'white')
-    font = ImageFont.truetype('Stencil.ttf', size=10)
-    draw = ImageDraw.Draw(temp_img)
-
-    text_pos = {
-        "Статус подписи": (10, 10),
-        "Владелец сертификата": (10, 40),
-        "Издатель сертификата": (10, 55),
-        "Серийный номер": (10, 70),
-        "Действителен": (10, 85)
+    return {
+        "Действительность документа:": signature,
+        "Владелец документа:": cn,
+        "Серийный номер документа": document_id,
+        "Дата истечения действительности подписи": expiration_time
     }
 
-    for key, value in data.items():
-        pos = text_pos.get(key)
-        if pos:
-            draw.text(pos, f'{key}: {value}', fill='black', font=font)
+def create_stamp(data):
 
-    temp_img.save('stamp.png')
+    # Define stamp size and background color
+    stamp_width = 400
+    stamp_height = 200
+    background_color = (255, 255, 255)  # White
+
+    # Define font properties
+    font_size = 16
+    font_color = (20, 20, 150)  # Black
+    font_path = 'Stencil.ttf'  # Replace with the path to your font file
+
+    # Define border properties
+    border_color = (20, 20, 150)  # Blue
+    border_width = 5
+    # border_radius = 10
+
+    # Create a blank stamp image
+    stamp_image = Image.new('RGB', (stamp_width, stamp_height), background_color)
+    draw = ImageDraw.Draw(stamp_image)
+
+    # Set the font
+    font = ImageFont.truetype(font_path, font_size)
+
+    # Calculate the vertical position for each object's information
+    line_height = font.getsize('SAMPLE')[1]  # Adjust the sample text to fit your font
+    vertical_position = 20  # Initial vertical position
+
+    # Draw each object's information on the stamp image
+    for key, value in data.items():
+        # Format the information string
+        info_str = f'{key}: {value}'
+
+        # Draw the information text on the stamp image
+        draw.text((20, vertical_position), info_str, font=font, fill=font_color)
+
+        # Update the vertical position for the next object
+        vertical_position += line_height
+
+    # Create a border around the stamp image
+    border_box = [(0, 0), (stamp_width - 1, stamp_height - 1)]
+    draw.rectangle(border_box, outline=border_color, width=border_width)
+
+    # Save the stamp image
+    stamp_image.save('stamp.png')
+
+if __name__ == "__main__":
+    uvicorn.run(app)
