@@ -34,7 +34,6 @@ async def index():
         html_content = file.read()
     return HTMLResponse(content=html_content)
 
-
 @app.post("/upload")
 async def collect_upload(sig_file: UploadFile = File(...), pdf_file: UploadFile = File(...)):
     pdf = await pdf_file.read()

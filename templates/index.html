@@ -1,140 +1,147 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Printable PKCS-7</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
-        
-        body {
-          background-color: #292929;
-          color: #F4F4F4;
-          font-family: 'Indie Flower', cursive;
-        }
-        
-        h1 {
-          margin-top: 10%;
-          text-align: center;
-        }
-        
-        .container {
-          width: 400px;
-          margin: 0 auto;
-          text-align: center;
-        }
-        
-        .input-label {
-          display: block;
-          margin-top: 20px;
-          text-align: left;
-        }
-        
-        .file-input {
-          display: inline-block;
-          background-color: #F4F4F4;
-          color: #292929;
-          padding: 10px;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 18px;
-          font-weight: bold;
-        }
-        
-        .info-text {
-          text-align: left;
-          margin-top: 5px;
-        }
-        
-        .download-button {
-          display: block;
-          margin-top: 20px;
-          background-color: #F4F4F4;
-          color: #292929;
-          padding: 10px 20px;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          text-decoration: none;
-          text-align: center;
-        }
-        
-        .download-button:hover {
-          background-color: #EAEAEA;
-        }
-        
-        .arrow {
-          display: inline-block;
-          width: 10px;
-          height: 10px;
-          margin-right: 5px;
-          transform: rotate(-45deg);
-          background-color: #F4F4F4;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>Create stamp for detached electronically signed document.</h1>
-      <div class="container">
-        <label class="input-label">Select detached original document file that was signed electronically:</label>
-        <div>
-          <input type="file" name="pdf_file" id="pdfFileInput" class="file-input" accept=".pdf">
-          <span class="info-text">Allowed extensions: *.pdf</span>
-        </div>
-        
-        <label class="input-label">Select detached signature file:</label>
-        <div>
-          <input type="file" name="sig_file" id="sigFileInput" class="file-input" accept=".p7b, .p7s, .sig">
-          <span class="info-text">Allowed extensions: *.p7b, *.p7s, *.sig</span>
-        </div>
-        
-        <a href="#" class="download-button"><span class="arrow"></span>Download the stamped PDF document</a>
-      </div>
-    <script>
-        function handleFileUpload() {
-            const formData = new FormData();
-            const sigFileInput = document.getElementById("sigFileInput");
-            const pdfFileInput = document.getElementById("pdfFileInput");
-            if (sigFileInput.files.length > 0 && pdfFileInput.files.length > 0) {
-                const sigFileName = sigFileInput.files[0].name;
-                const pdfFileName = pdfFileInput.files[0].name;
-                
-                const sigExtension = sigFileName.substring(sigFileName.lastIndexOf('.'));
-                const pdfExtension = pdfFileName.substring(pdfFileName.lastIndexOf('.'));
-                let allowedExt = [".sig", ".p7s", ".p7b"];
+  <title>Create Stamp</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
+    
+    body {
+      background-color: #292929;
+      color: #F4F4F4;
+      font-family: 'Indie Flower', cursive;
+    }
+    
+    h1 {
+      margin-top: 10%;
+      text-align: center;
+    }
+    
+    .container {
+      width: 400px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    
+    .input-label {
+      display: block;
+      margin-top: 20px;
+      text-align: left;
+    }
+    
+    .file-input {
+      display: inline-block;
+      background-color: #F4F4F4;
+      color: #292929;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .info-text {
+      text-align: left;
+      margin-top: 5px;
+      font-size: 14px;
+      color: #888888;
+    }
+    
+    .upload-button {
+      display: block;
+      margin-top: 20px;
+      background-color: #F4F4F4;
+      color: #292929;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: center;
+    }
+    
+    .upload-button:hover {
+      background-color: #EAEAEA;
+    }
+    
+    .download-button {
+      display: block;
+      margin-top: 20px;
+      background-color: #F4F4F4;
+      color: #292929;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+    }
+    
+    .download-button:hover {
+      background-color: #EAEAEA;
+    }
+    
+    .arrow {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 5px;
+      transform: rotate(-45deg);
+      background-color: #F4F4F4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Create stamp for detached electronically signed document.</h1>
+  <div class="container">
+    <label class="input-label">Select detached original document file that was signed electronically:</label>
+    <div>
+      <input type="file" name="pdf_file" id="pdfFileInput" class="file-input" accept=".pdf">
+      <span class="info-text">(Allowed extensions: *.pdf)</span>
+    </div>
+    
+    <label class="input-label">Select detached signature file:</label>
+    <div>
+      <input type="file" name="sig_file" id="sigFileInput" class="file-input" accept=".p7b, .p7s, .sig">
+      <span class="info-text">(Allowed extensions: *.p7b, *.p7s, *.sig)</span>
+    </div>
+    
+    <button id="uploadButton" class="upload-button">Upload Selected Files</button>
+    
+    <a href="#" class="download-button"><span class="arrow"></span>Download the stamped PDF document</a>
+  </div>
+  
+  <script>
+    function handleFileUpload() {
+      const formData = new FormData();
+      const sigFileInput = document.getElementById("sigFileInput");
+      const pdfFileInput = document.getElementById("pdfFileInput");
+      if (sigFileInput.files.length === 0 && pdfFileInput.files.length === 0) {
+        alert('Please select files');
+        return;
+      }
+      
+      formData.append('sig_file', sigFileInput.files[0]);
+      formData.append('pdf_file', pdfFileInput.files[0]);
 
-                if (allowedExt.includes(sigExtension) && pdfExtension === '.pdf') {
-                    formData.append('sig_file', sigFileInput.files[0]);
-                    formData.append('pdf_file', pdfFileInput.files[0]);
-                } else {
-                    alert('Please select a valid *.sig and *.pdf files');
-                    return;
-                }
-            } else {
-            alert('Please select files');
-            return;
-            }
-
-            fetch("/upload", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                alert("Files uploaded and processed successfully");
-            })
-            .catch(error => {
-                console.error(error);
-                alert("Error uploading files");
-            });
-        }
-        const uploadButton = document.getElementById("uploadButton");
-        uploadButton.addEventListener("click", () => {
-            handleFileUpload();
-        });
-    </script>
+      fetch("/upload", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        alert("Files uploaded and processed successfully");
+      })
+      .catch(error => {
+        console.error(error);
+        alert("Error uploading files");
+      });
+    };
+    
+    const uploadButton = document.getElementById("uploadButton");
+    uploadButton.addEventListener("click", () => {
+      handleFileUpload();
+    });
+  </script>
 </body>
 </html>
