@@ -6,40 +6,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printable PKCS-7</title>
     <style>
-        html {
-            background-color: rgb(30,30,40);
-            color: aliceblue;
+        @import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
+        
+        body {
+          background-color: #292929;
+          color: #F4F4F4;
+          font-family: 'Indie Flower', cursive;
         }
-    </style>
-</head>
-<body>
-    <h1>Create stamp for e-signed document.</h1>
-    <h2>Only detached documents (signature file *.sig AND original signed document *.pdf allowed)</h2>
-    <div>
-        Select *.pdf File
-        <input type="file" name="pdf_file" id="pdfFileInput"><br>
-    </div>
-    <div style=margin-top:1%>
-        Select *.sig File
-        <input type="file" name="sig_file" id="sigFileInput"><br>
-    </div>
-    <div>
-        <button id="uploadButton" style="margin-top:1%">Upload Selected Files</button>
-    </div>
+        
+        h1 {
+          margin-top: 10%;
+          text-align: center;
+        }
+        
+        .container {
+          width: 400px;
+          margin: 0 auto;
+          text-align: center;
+        }
+        
+        .input-label {
+          display: block;
+          margin-top: 20px;
+          text-align: left;
+        }
+        
+        .file-input {
+          display: inline-block;
+          background-color: #F4F4F4;
+          color: #292929;
+          padding: 10px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 18px;
+          font-weight: bold;
+        }
+        
+        .info-text {
+          text-align: left;
+          margin-top: 5px;
+        }
+        
+        .download-button {
+          display: block;
+          margin-top: 20px;
+          background-color: #F4F4F4;
+          color: #292929;
+          padding: 10px 20px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          text-decoration: none;
+          text-align: center;
+        }
+        
+        .download-button:hover {
+          background-color: #EAEAEA;
+        }
+        
+        .arrow {
+          display: inline-block;
+          width: 10px;
+          height: 10px;
+          margin-right: 5px;
+          transform: rotate(-45deg);
+          background-color: #F4F4F4;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Create stamp for detached electronically signed document.</h1>
+      <div class="container">
+        <label class="input-label">Select detached original document file that was signed electronically:</label>
+        <div>
+          <input type="file" name="pdf_file" id="pdfFileInput" class="file-input" accept=".pdf">
+          <span class="info-text">Allowed extensions: *.pdf</span>
+        </div>
+        
+        <label class="input-label">Select detached signature file:</label>
+        <div>
+          <input type="file" name="sig_file" id="sigFileInput" class="file-input" accept=".p7b, .p7s, .sig">
+          <span class="info-text">Allowed extensions: *.p7b, *.p7s, *.sig</span>
+        </div>
+        
+        <a href="#" class="download-button"><span class="arrow"></span>Download the stamped PDF document</a>
+      </div>
     <script>
         function handleFileUpload() {
             const formData = new FormData();
             const sigFileInput = document.getElementById("sigFileInput");
             const pdfFileInput = document.getElementById("pdfFileInput");
-
             if (sigFileInput.files.length > 0 && pdfFileInput.files.length > 0) {
                 const sigFileName = sigFileInput.files[0].name;
                 const pdfFileName = pdfFileInput.files[0].name;
-
+                
                 const sigExtension = sigFileName.substring(sigFileName.lastIndexOf('.'));
                 const pdfExtension = pdfFileName.substring(pdfFileName.lastIndexOf('.'));
+                let allowedExt = [".sig", ".p7s", ".p7b"];
 
-                if ((sigExtension === '.sig') && pdfExtension === '.pdf') {
+                if (allowedExt.includes(sigExtension) && pdfExtension === '.pdf') {
                     formData.append('sig_file', sigFileInput.files[0]);
                     formData.append('pdf_file', pdfFileInput.files[0]);
                 } else {
@@ -69,6 +135,6 @@
         uploadButton.addEventListener("click", () => {
             handleFileUpload();
         });
-    </script>    
+    </script>
 </body>
 </html>

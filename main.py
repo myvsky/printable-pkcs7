@@ -1,5 +1,3 @@
-import uvicorn
-
 # Web app holding
 from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
@@ -64,7 +62,19 @@ def parse_sig(pdf, sig) -> dict:
     cn = p7s.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
     document_id = p7s.serial_number
     expiration_time = p7s.not_valid_after
+
+    # Signature verification
     signature = p7s.signature
+    try:
+        p7s.public_key().verify(
+            signature,
+            data,
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+        print("Signature is valid.")
+    except:
+        print("Signature is invalid.")
 
     return {
         "Действительность документа:": signature,
@@ -118,6 +128,3 @@ def create_stamp(data):
 
     # Save the stamp image
     stamp_image.save('stamp.png')
-
-if __name__ == "__main__":
-    uvicorn.run(app)
