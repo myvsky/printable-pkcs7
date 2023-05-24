@@ -1,19 +1,18 @@
-# Web app holding
 from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# SIG parsing
-import subprocess
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.x509.oid import NameOID
+import OpenSSL.crypto as crypto
+from OpenSSL.crypto import _lib, _ffi, X509
 
-# Stamp creating
 from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
+from io import BytesIO
+from pdfrw import PdfReader, PdfWriter, PageMerge
 
-# Configure CORS
+
+# Configure CORS so the server could exchange data with user
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -25,105 +24,152 @@ app.add_middleware(
         ],
     allow_credentials=True,
     allow_methods=["POST"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
+pdf_data = None
 
+
+# Rendering HTML page
 @app.get("/", response_class=HTMLResponse)
 async def index():
     with open("templates/index.html", "r") as file:
         html_content = file.read()
     return HTMLResponse(content=html_content)
 
+
+# Exchange data with user
 @app.post("/upload")
-async def collect_upload(sig_file: UploadFile = File(...), pdf_file: UploadFile = File(...)):
-    pdf = await pdf_file.read()
-    sig = await sig_file.read()
+async def data_exchange(
+    pkcs7_file: UploadFile = File(...), doc_file: UploadFile = File(...)):
+    doc = await doc_file.read()
+    pkcs7 = await pkcs7_file.read()
 
-    stamp_info = parse_sig(pdf, sig)
-    create_stamp(stamp_info)
-    return {"message": "Files uploaded and processed successfully"}
+    data = parse_signature(pkcs7)
+    stamp = create_stamp(data)
+    print_stamp(stamp, doc)
+    return {"redirect": "/download"}
 
 
-def parse_sig(pdf, sig) -> dict:
-
-    # Specify the path to the input PKCS#7 certificate file
-    input_file = 'Кузнецова договор.pdf (1).p7s'
-
-    # Run the openssl command to convert the certificate and capture the output
-    output = subprocess.run(['openssl', 'pkcs7', '-in', input_file, '-inform', 'DER', '-print_certs'], capture_output=True)
-
-    # Extract the PEM certificate data from the output
-    pem_data = output.stdout
-
-    # Parse the PEM certificate data
-    p7s = x509.load_pem_x509_certificate(pem_data, default_backend())
-
-    cn = p7s.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
-    document_id = p7s.serial_number
-    expiration_time = p7s.not_valid_after
-
-    # Signature verification
-    signature = p7s.signature
-    try:
-        p7s.public_key().verify(
-            signature,
-            data,
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
-        print("Signature is valid.")
-    except:
-        print("Signature is invalid.")
-
+def parse_signature(pkcs7) -> dict:
+    p7 = crypto.load_pkcs7_data(crypto.FILETYPE_ASN1, pkcs7)
+    cert = get_certificates(p7)[0]
     return {
-        "Действительность документа:": signature,
-        "Владелец документа:": cn,
-        "Серийный номер документа": document_id,
-        "Дата истечения действительности подписи": expiration_time
+        "Владелец": cert.get_subject().commonName,
+        "Издатель": cert.get_issuer().commonName,
+        "Серийный номер документа": cert.get_serial_number(),
+        "Дата истечения действительности подписи (Г-М-Д Ч:М:С)": 
+        datetime.strptime(f"{cert.get_notAfter()}", "B'%Y%m%d%H%M%SZ'")
     }
+
 
 def create_stamp(data):
 
-    # Define stamp size and background color
-    stamp_width = 400
-    stamp_height = 200
-    background_color = (255, 255, 255)  # White
+    def wrap_text(text, width, font):
+        text_lines = []
+        text_line = []
+        text = text.replace('\n', ' [br] ')
+        words = text.split()
+        font_size = font.getsize(text)
 
-    # Define font properties
-    font_size = 16
-    font_color = (20, 20, 150)  # Black
-    font_path = 'Stencil.ttf'  # Replace with the path to your font file
+        for word in words:
+            if word == '[br]':
+                text_lines.append(' '.join(text_line))
+                text_line = []
+                continue
+            text_line.append(word)
+            w, h = font.getsize(' '.join(text_line))
+            if w > width:
+                text_line.pop()
+                text_lines.append(' '.join(text_line))
+                text_line = [word]
 
-    # Define border properties
-    border_color = (20, 20, 150)  # Blue
-    border_width = 5
-    # border_radius = 10
+        if len(text_line) > 0:
+            text_lines.append(' '.join(text_line))
 
-    # Create a blank stamp image
-    stamp_image = Image.new('RGB', (stamp_width, stamp_height), background_color)
+        return text_lines
+
+    stamp_image = Image.new('RGBA', (350, 150), (0, 0, 0, 0))
     draw = ImageDraw.Draw(stamp_image)
+    font = ImageFont.truetype('Stencil.ttf', 14)
 
-    # Set the font
-    font = ImageFont.truetype(font_path, font_size)
+    line_height = font.getsize('SAMPLE')[1]
+    vertical_position = 10
 
-    # Calculate the vertical position for each object's information
-    line_height = font.getsize('SAMPLE')[1]  # Adjust the sample text to fit your font
-    vertical_position = 20  # Initial vertical position
-
-    # Draw each object's information on the stamp image
     for key, value in data.items():
-        # Format the information string
         info_str = f'{key}: {value}'
+        substr = wrap_text(text=info_str, width=340, font=font)
+        for ss in substr:
+            draw.text((10, vertical_position), ss, font=font, fill=(20,20,150))
+            vertical_position += line_height
 
-        # Draw the information text on the stamp image
-        draw.text((20, vertical_position), info_str, font=font, fill=font_color)
-
-        # Update the vertical position for the next object
-        vertical_position += line_height
-
-    # Create a border around the stamp image
-    border_box = [(0, 0), (stamp_width - 1, stamp_height - 1)]
+    # Border
+    border_color = (20, 20, 150)
+    border_width = 2
+    border_box = [(0, 0), (350 - 1, 150 - 1)]
     draw.rectangle(border_box, outline=border_color, width=border_width)
 
     # Save the stamp image
-    stamp_image.save('stamp.png')
+    buffer = BytesIO()
+    stamp_image.save(buffer, format='PDF', resolution=100.0)
+    return buffer.getvalue()
+
+
+def print_stamp(stamp, pdf):
+    global pdf_data
+    pdf = PdfReader(BytesIO(pdf))
+    stamp_pdf = PdfReader(BytesIO(stamp))
+    
+    num_pages = len(pdf.pages)
+    last_page = PageMerge(pdf.pages[num_pages-1])
+    stamp = last_page.add(stamp_pdf.pages[0])
+
+    last_page_x, last_page_y, last_page_w, last_page_h = map(
+        float, pdf.pages[num_pages - 1].MediaBox)
+    stamp_x, stamp_y, stamp_w, stamp_h = map(float, stamp_pdf.pages[0].MediaBox)
+    stamp.x = last_page_w - stamp_w
+    stamp.y = last_page_y
+
+    last_page.render()
+    buffer_data = BytesIO()
+
+    PdfWriter().write(buffer_data, pdf)
+    pdf_data = buffer_data.getvalue()
+
+
+@app.get("/download")
+async def download_page():
+    global pdf_data
+    return StreamingResponse(BytesIO(pdf_data),
+    media_type="application/pdf",
+    headers={
+        "Content-Disposition": "attachment; filename=output.pdf"
+    })
+
+
+def get_certificates(self):
+    """
+    https://github.com/pyca/pyopenssl/pull/367/files#r67300900
+
+    Returns all certificates for the PKCS7 structure, if present. Only
+    objects of type ``signedData`` or ``signedAndEnvelopedData`` can embed
+    certificates.
+
+    :return: The certificates in the PKCS7, or :const:`None` if
+        there are none.
+    :rtype: :class:`tuple` of :class:`X509` or :const:`None`
+    """
+    certs = _ffi.NULL
+    if self.type_is_signed():
+        certs = self._pkcs7.d.sign.cert
+    elif self.type_is_signedAndEnveloped():
+        certs = self._pkcs7.d.signed_and_enveloped.cert
+
+    pycerts = []
+    for i in range(_lib.sk_X509_num(certs)):
+        pycert = X509()
+        pycert._x509 = _lib.X509_dup(_lib.sk_X509_value(certs, i))
+        pycerts.append(pycert)
+
+    if not pycerts:
+        return None
+    return tuple(pycerts)

@@ -1,127 +1,126 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Create Stamp</title>
+  <title>Printable PKCS-7</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
-    
-    body {
-      background-color: #292929;
-      color: #F4F4F4;
-      font-family: 'Indie Flower', cursive;
+    @import url('https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;0,1000;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900;1,1000&display=swap');    
+    html {
+        margin:0;
+        background-color: rgb(53, 47, 83);
+        color:#E0E0E0;
+        font-family: 'Mulish', sans-serif;
     }
-    
     h1 {
-      margin-top: 10%;
-      text-align: center;
+        margin-top: 10%;
+        text-align: center;
     }
-    
     .container {
-      width: 400px;
-      margin: 0 auto;
-      text-align: center;
+        width: 400px;
+        margin: 0 auto;
+        text-align: center;
     }
-    
     .input-label {
-      display: block;
-      margin-top: 20px;
-      text-align: left;
+        margin-top: 20px;
+        text-align: left;
     }
-    
     .file-input {
-      display: inline-block;
-      background-color: #F4F4F4;
-      color: #292929;
-      padding: 10px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 18px;
-      font-weight: bold;
+        margin-top:10px;
+        display: inline-block;
+        background-color: #F4F4F4;
+        color: #3a3a3a;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
     }
-    
+    .file-input::file-selector-button {
+        margin-right: 20px;
+        border: none;
+        background: #084cdf;
+        padding: 10px 20px;
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        transition: background .2s ease-in-out;
+    }
+    .file-input::file-selector-button:hover {
+        background: #0d45a5;
+    }
     .info-text {
-      text-align: left;
-      margin-top: 5px;
-      font-size: 14px;
-      color: #888888;
+        padding-top: 10px;
+        font-size: 14px;
+        color: #888888;
     }
     
     .upload-button {
-      display: block;
-      margin-top: 20px;
-      background-color: #F4F4F4;
-      color: #292929;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      text-align: center;
+        display: inline-flex;
+        margin-top: 20px;
+        background-color: #F4F4F4;
+        color: #292929;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-align: center;
+        font-size:16px;
+        font-weight: 600;
     }
     
     .upload-button:hover {
-      background-color: #EAEAEA;
+        background-color: #EAEAEA;
     }
     
     .download-button {
-      display: block;
-      margin-top: 20px;
-      background-color: #F4F4F4;
-      color: #292929;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      text-decoration: none;
-      text-align: center;
+        display: inline-block;
+        margin-top: 50px;
+        background: #f7e6fc;
+        color: #292929;
+        font-size: 25px;
+        padding: 10px;
+        width: 90%;
+        border: none;
+        border-radius: 15px;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        font-weight: 900;
+        transition: background .2s ease-in-out;
     }
-    
     .download-button:hover {
-      background-color: #EAEAEA;
-    }
-    
-    .arrow {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      margin-right: 5px;
-      transform: rotate(-45deg);
-      background-color: #F4F4F4;
+        background: #e6e6e6;
     }
   </style>
 </head>
 <body>
-  <h1>Create stamp for detached electronically signed document.</h1>
+  <h1>Printable PKCS-7</h1>
   <div class="container">
-    <label class="input-label">Select detached original document file that was signed electronically:</label>
     <div>
-      <input type="file" name="pdf_file" id="pdfFileInput" class="file-input" accept=".pdf">
+      <input type="file" name="doc_file" id="docInput" class="file-input" accept=".pdf">
       <span class="info-text">(Allowed extensions: *.pdf)</span>
     </div>
     
-    <label class="input-label">Select detached signature file:</label>
     <div>
-      <input type="file" name="sig_file" id="sigFileInput" class="file-input" accept=".p7b, .p7s, .sig">
+      <input type="file" name="pkcs7_file" id="pkcs7Input" class="file-input" accept=".p7b, .p7s, .sig">
       <span class="info-text">(Allowed extensions: *.p7b, *.p7s, *.sig)</span>
     </div>
     
     <button id="uploadButton" class="upload-button">Upload Selected Files</button>
-    
-    <a href="#" class="download-button"><span class="arrow"></span>Download the stamped PDF document</a>
-  </div>
+      </div>
   
   <script>
     function handleFileUpload() {
       const formData = new FormData();
-      const sigFileInput = document.getElementById("sigFileInput");
-      const pdfFileInput = document.getElementById("pdfFileInput");
-      if (sigFileInput.files.length === 0 && pdfFileInput.files.length === 0) {
+      const pkcs7Input = document.getElementById("pkcs7Input");
+      const docInput = document.getElementById("docInput");
+      if (pkcs7Input.files.length === 0 && docInput.files.length === 0) {
         alert('Please select files');
         return;
       }
       
-      formData.append('sig_file', sigFileInput.files[0]);
-      formData.append('pdf_file', pdfFileInput.files[0]);
+      formData.append('pkcs7_file', pkcs7Input.files[0]);
+      formData.append('doc_file', docInput.files[0]);   
 
       fetch("/upload", {
         method: "POST",
@@ -129,12 +128,13 @@
       })
       .then(response => response.json())
       .then(data => {
-        console.log(data);
-        alert("Files uploaded and processed successfully");
+        if (data.redirect) {
+            window.location.href = data.redirect;
+        }
       })
       .catch(error => {
         console.error(error);
-        alert("Error uploading files");
+        alert("Error uploading files. Discover console logs to find out more.");
       });
     };
     
