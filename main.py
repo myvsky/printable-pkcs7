@@ -94,6 +94,10 @@ def create_stamp(data):
 
     line_height = font.getsize('SAMPLE')[1]
     vertical_position = 10
+    draw.text((10, vertical_position), 
+    "Документ подписан электронной подписью", font=font, fill=(20,20,150)
+    )
+    vertical_position += line_height
 
     for key, value in data.items():
         info_str = f'{key}: {value}'
