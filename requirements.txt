@@ -1,7 +1,5 @@
 fastapi
-cryptography
 pillow
 python-multipart
-uvicorn
 pyopenssl
-pypdf2
+pdfrw
