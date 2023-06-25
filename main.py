@@ -8,8 +8,15 @@ from cryptography.x509 import load_der_x509_certificate
 from cryptography.hazmat.backends import default_backend
 from cryptography.x509.oid import NameOID
 
-from fpdf import FPDF
-from pdfrw import PdfReader, PageMerge, PdfWriter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Frame
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+# Font
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
+# PDF handlers
+from pdfrw import PdfReader, PdfWriter, PageMerge
 from io import BytesIO
 
 
@@ -39,7 +46,7 @@ async def index():
 
 
 @app.post("/upload")
-async def data_exchange(
+async def upload(
     pkcs7_file: UploadFile = File(...), doc_file: UploadFile = File(...)):
 
     doc = await doc_file.read()
@@ -49,15 +56,15 @@ async def data_exchange(
         load_der_pkcs7_certificates(pkcs7)[0]
     )
 
-    stamp = create_stamp(doc, data)
+    wm = watermark(doc, data)
 
-    merge_pdf(doc, stamp)
+    merge(doc, wm)
 
     return {"redirect": "/download"}
 
 
 @app.get("/download")
-async def download_page():
+async def download():
     global pdf_data
     return StreamingResponse(BytesIO(pdf_data),
     media_type="application/pdf",
@@ -77,51 +84,56 @@ def parse_signature(cert) -> list:
     valid = cert.not_valid_after
 
     return [
-        cn,
-        valid,
+        f"{cn}",
+        f"{valid}",
         f"Сертификат {sn_hex}"
     ]
 
 
-# Returns stamped PDF
-def create_stamp(doc, data):
+def watermark(doc, data) -> None:
+    doc = PdfReader(fdata=doc)
+    buf = BytesIO()
 
-    stamp = FPDF()
-    stamp.add_page(format=(200, 75))
+    w = float(doc.pages[-1].MediaBox[2])
+    h = float(doc.pages[-1].MediaBox[3])
 
-    stamp.add_font("Mulish", '', "Mulish-ExtraBold.ttf", uni=True)
-    stamp.set_font('Mulish', '', size=8)
+    pdf = Canvas(buf, pagesize=(w, h))
+    frame = Frame(10, 10, w-20, 50, showBoundary=1)
 
-    # Filling pdf
-    stamp.cell(h=5, txt= "Этот документ подписан электронной подписью", ln=1)
-    for v in data:
-        stamp.cell(h=5, txt=f'{v}', ln=1)
+    # Font setting
+    pdfmetrics.registerFont(TTFont("CustomFont", "Mulish-ExtraBold.ttf"))
+    custom_style = ParagraphStyle(name="CustomStyle", fontName="CustomFont", fontSize=8, textColor='blue')
 
-    return stamp.output(dest='S')
+    # Adding unique text from data to watermark
+    content = [Paragraph(line, custom_style) for line in data]
+
+    # Color handling
+    pdf.setFillColorRGB(0, 0, 128)
+    pdf.setStrokeColorRGB(0, 0, 128)
+
+    frame.addFromList(content, pdf)
+    pdf.save()
+
+    return buf.getvalue()
 
 
-def merge_pdf(doc, stamp):
-    # Basic definitions
-    original_pdf = PdfReader(fdata=doc)
-    stamp_pdf = PdfReader(BytesIO(stamp))
-    last_page = PageMerge(original_pdf.pages[
-        len(original_pdf.pages) - 1
-    ])
+def merge(doc, wm):
+    new = PdfReader(fdata=wm)
+    old = PdfReader(fdata=doc)
 
-    stamped_page = last_page.add(stamp_pdf.pages[0])
+    out = PdfWriter()
 
-    # Calculating size of original document
-    last_page_x, last_page_y, last_page_w, last_page_h = map(
-    float, original_pdf.pages[len(original_pdf.pages) - 1].MediaBox)
-    stamp_x, stamp_y, stamp_w, stamp_h = map(
-        float, stamp_pdf.pages[0].MediaBox
-    )
-    # Merge original document and stamp
-    stamped_page.x = last_page_w - stamp_w
-    stamped_page.y = last_page_y - 100
-    last_page.render()
+    page = old.pages[-1]
+    mb = page.MediaBox
 
-    buffer_data = BytesIO()
-    PdfWriter().write(buffer_data, original_pdf)
+    merger = PageMerge(page)
+    merger.add(new.pages[0])
+    merger.render()
+
+    out_stream = BytesIO()
+
+    out.addpages(old.pages)
+    out.write(out_stream)
+
     global pdf_data
-    pdf_data = buffer_data.getvalue()
+    pdf_data = out_stream.getvalue()

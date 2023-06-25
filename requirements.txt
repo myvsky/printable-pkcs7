@@ -1,5 +1,4 @@
 fastapi
-fpdf2
+pdfrw
 python-multipart
 pyopenssl
-pdfrw
