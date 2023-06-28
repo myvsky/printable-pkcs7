@@ -1,4 +1,5 @@
 fastapi
+reportlab
 pdfrw
 python-multipart
 pyopenssl
