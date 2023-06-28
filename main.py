@@ -23,16 +23,16 @@ from io import BytesIO
 # Configure CORS so the server could exchange data with user
 app = FastAPI()
 app.add_middleware(
-CORSMiddleware,
-allow_origins=[
-# Local servers for testing
-"http://localhost:8000", "http://127.0.0.1:8000",
-# Vercel app
-"https://printable-pkcs7.vercel.app/"
-],
-allow_credentials=True,
-allow_methods=["POST"],
-allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=[
+        # Local servers for testing
+        "http://localhost:8000", "http://127.0.0.1:8000",
+        # Vercel app
+        "https://printable-pkcs7.vercel.app/"
+        ],
+    allow_credentials=True,
+    allow_methods=["POST"],
+    allow_headers=["*"]
 )
 pdf_data = None
 
@@ -40,100 +40,100 @@ pdf_data = None
 # Rendering HTML page
 @app.get("/", response_class=HTMLResponse)
 async def index():
-with open("templates/index.html", "r") as file:
-html_content = file.read()
-return HTMLResponse(content=html_content)
+    with open("templates/index.html", "r") as file:
+        html_content = file.read()
+    return HTMLResponse(content=html_content)
 
 
 @app.post("/upload")
 async def upload(
-pkcs7_file: UploadFile = File(...), doc_file: UploadFile = File(...)):
+    pkcs7_file: UploadFile = File(...), doc_file: UploadFile = File(...)):
 
-doc = await doc_file.read()
-pkcs7 = await pkcs7_file.read()
+    doc = await doc_file.read()
+    pkcs7 = await pkcs7_file.read()
 
-data = parse_signature(
-load_der_pkcs7_certificates(pkcs7)[0]
-)
+    data = parse_signature(
+        load_der_pkcs7_certificates(pkcs7)[0]
+    )
 
-wm = watermark(doc, data)
+    wm = watermark(doc, data)
 
-merge(doc, wm)
+    merge(doc, wm)
 
-return {"redirect": "/download"}
+    return {"redirect": "/download"}
 
 
 @app.get("/download")
 async def download():
-global pdf_data
-return StreamingResponse(BytesIO(pdf_data),
-media_type="application/pdf",
-headers={
-"Content-Disposition": "attachment; filename=output.pdf"
-})
+    global pdf_data
+    return StreamingResponse(BytesIO(pdf_data),
+    media_type="application/pdf",
+    headers={
+        "Content-Disposition": "attachment; filename=output.pdf"
+    })
 
 
 def parse_signature(cert) -> list:
-# Serial number in integer value
-sn = cert.serial_number
-# Serial number in HEX
-sn_hex = hex(sn).upper().replace('0X', '')
-# Issuer's commmon name
-cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
-# Valid until : datetime object
-valid = cert.not_valid_after
+    # Serial number in integer value
+    sn = cert.serial_number
+    # Serial number in HEX
+    sn_hex = hex(sn).upper().replace('0X', '')
+    # Issuer's commmon name
+    cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+    # Valid until : datetime object
+    valid = cert.not_valid_after
 
-return [
-f"{cn}",
-f"{valid}",
-f"Сертификат {sn_hex}"
-]
+    return [
+        f"{cn}",
+        f"{valid}",
+        f"Сертификат {sn_hex}"
+    ]
 
 
 def watermark(doc, data) -> None:
-doc = PdfReader(fdata=doc)
-buf = BytesIO()
+    doc = PdfReader(fdata=doc)
+    buf = BytesIO()
 
-w = float(doc.pages[-1].MediaBox[2])
-h = float(doc.pages[-1].MediaBox[3])
+    w = float(doc.pages[-1].MediaBox[2])
+    h = float(doc.pages[-1].MediaBox[3])
 
-pdf = Canvas(buf, pagesize=(w, h))
-frame = Frame(10, 10, w-20, 50, showBoundary=1)
+    pdf = Canvas(buf, pagesize=(w, h))
+    frame = Frame(10, 10, w-20, 50, showBoundary=1)
 
-# Font setting
-pdfmetrics.registerFont(TTFont("CustomFont", "Mulish-ExtraBold.ttf"))
-custom_style = ParagraphStyle(name="CustomStyle", fontName="CustomFont", fontSize=8, textColor='blue')
+    # Font setting
+    pdfmetrics.registerFont(TTFont("CustomFont", "Mulish-ExtraBold.ttf"))
+    custom_style = ParagraphStyle(name="CustomStyle", fontName="CustomFont", fontSize=8, textColor='blue')
 
-# Adding unique text from data to watermark
-content = [Paragraph(line, custom_style) for line in data]
+    # Adding unique text from data to watermark
+    content = [Paragraph(line, custom_style) for line in data]
 
-# Color handling
-pdf.setFillColorRGB(0, 0, 128)
-pdf.setStrokeColorRGB(0, 0, 128)
+    # Color handling
+    pdf.setFillColorRGB(0, 0, 128)
+    pdf.setStrokeColorRGB(0, 0, 128)
 
-frame.addFromList(content, pdf)
-pdf.save()
+    frame.addFromList(content, pdf)
+    pdf.save()
 
-return buf.getvalue()
+    return buf.getvalue()
 
 
 def merge(doc, wm):
-new = PdfReader(fdata=wm)
-old = PdfReader(fdata=doc)
+    new = PdfReader(fdata=wm)
+    old = PdfReader(fdata=doc)
 
-out = PdfWriter()
+    out = PdfWriter()
 
-page = old.pages[-1]
-mb = page.MediaBox
+    page = old.pages[-1]
+    mb = page.MediaBox
 
-merger = PageMerge(page)
-merger.add(new.pages[0])
-merger.render()
+    merger = PageMerge(page)
+    merger.add(new.pages[0])
+    merger.render()
 
-out_stream = BytesIO()
+    out_stream = BytesIO()
 
-out.addpages(old.pages)
-out.write(out_stream)
+    out.addpages(old.pages)
+    out.write(out_stream)
 
-global pdf_data
-pdf_data = out_stream.getvalue()
+    global pdf_data
+    pdf_data = out_stream.getvalue()
