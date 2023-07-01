@@ -11,6 +11,7 @@ from cryptography.x509.oid import NameOID
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Frame
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
 # Font
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
@@ -19,7 +20,10 @@ from reportlab.pdfbase import pdfmetrics
 from pdfrw import PdfReader, PdfWriter, PageMerge
 from io import BytesIO
 
+import locale
 
+
+locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 # Configure CORS so the server could exchange data with user
 app = FastAPI()
 app.add_middleware(
@@ -82,10 +86,17 @@ def parse_signature(cert) -> list:
     cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
     # Valid until : datetime object
     valid = cert.not_valid_after
+    signed = cert.not_valid_before
+    # Issuer
+    gn = cert.subject.get_attributes_for_oid(NameOID.GIVEN_NAME)[0].value
+    sur = cert.subject.get_attributes_for_oid(NameOID.SURNAME)[0].value
+    bus = cert.subject.get_attributes_for_oid(NameOID.TITLE)[0].value
 
     return [
+        f"Документ подписан электронной подписью {signed.strftime('%d %B %Y')}",
         f"{cn}",
-        f"{valid}",
+        f"{bus} {sur} {gn}",
+        f"Действителен до {valid.strftime('%d %B %Y')}",
         f"Сертификат {sn_hex}"
     ]
 
@@ -98,11 +109,11 @@ def watermark(doc, data) -> None:
     h = float(doc.pages[-1].MediaBox[3])
 
     pdf = Canvas(buf, pagesize=(w, h))
-    frame = Frame(10, 10, w-20, 50, showBoundary=1)
+    frame = Frame(10, 10, w-20, 75, showBoundary=1)
 
     # Font setting
     pdfmetrics.registerFont(TTFont("CustomFont", "Mulish-ExtraBold.ttf"))
-    custom_style = ParagraphStyle(name="CustomStyle", fontName="CustomFont", fontSize=8, textColor='blue')
+    custom_style = ParagraphStyle(name="CustomStyle", fontName="CustomFont", fontSize=7, textColor='blue')
 
     # Adding unique text from data to watermark
     content = [Paragraph(line, custom_style) for line in data]
